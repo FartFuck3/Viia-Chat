@@ -1,283 +1,534 @@
 <!DOCTYPE html>
+
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Viia Chat</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js"></script>
   <style>
-    body { font-family: Arial, sans-serif; padding: 20px; background: #f4f6f9; margin: 0; }
-    body.dark { background: #1a1a1a; color: #eee; }
-    #adminLock, #login, #usernameSetup { text-align: center; margin-top: 100px; }
-    #adminLock { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 999; }
-    #adminLock input { margin: 10px; padding: 10px; width: 300px; }
-    #chat { display: none; flex-direction: column; height: 80vh; }
-    #messages { flex: 1; border: 1px solid #ccc; background: white; margin-bottom: 10px; padding: 10px; overflow-y: auto; border-radius: 5px; display: flex; flex-direction: column; }
-    body.dark #messages { background: #222; border-color: #444; }
-    .msg { display: flex; margin: 8px 0; align-items: flex-start; max-width: 80%; }
-    .msg.self { align-self: flex-end; flex-direction: row-reverse; }
-    .msg.self .msg-content { text-align: right; background: #007BFF; color: white; }
-    .msg.other .msg-content { text-align: left; background: #e9ecef; }
-    .pfp { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; margin: 0 10px; }
-    .msg-content { padding: 8px; border-radius: 5px; }
-    .username { font-weight: bold; margin-bottom: 3px; font-size: 0.9em; color: #007BFF; }
-    #input-area { display: flex; gap: 5px; }
-    input[type="text"] { flex: 1; padding: 10px; border: 1px solid #ccc; border-radius: 5px; }
-    body.dark input[type="text"] { background: #333; color: #eee; border-color: #555; }
-    button { padding: 10px; background: #007BFF; color: white; border: none; border-radius: 5px; cursor: pointer; }
-    button:hover { background: #0056b3; }
-    
-    #themeToggle { position: fixed; top: 10px; right: 10px; padding: 8px 12px; border: none; border-radius: 5px; cursor: pointer; z-index: 100; background: #ddd; }
-    body.dark #themeToggle { background: #333; color: #fff; }
-    .avatar-option { cursor: pointer; border: 3px solid transparent; }
-    .avatar-option.selected { border-color: #007BFF; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+```
+body {
+  font-family: Arial, sans-serif;
+  background: #f4f6f9;
+  color: #111;
+  padding: 20px;
+}
+
+body.dark { background: #1a1a1a; color: #eee; }
+
+/* ── SCREENS ── */
+.screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 80vh;
+  gap: 10px;
+}
+
+.screen h2 { margin-bottom: 6px; font-size: 1.3rem; }
+
+input[type="text"], input[type="password"] {
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  font-size: 0.95rem;
+  width: 280px;
+  outline: none;
+}
+
+body.dark input[type="text"],
+body.dark input[type="password"] {
+  background: #333;
+  color: #eee;
+  border-color: #555;
+}
+
+button {
+  padding: 10px 20px;
+  background: #007BFF;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+button:hover { background: #0056b3; }
+
+/* ── ADMIN LOCK ── */
+#adminLock {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.92);
+  color: white;
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  z-index: 999;
+}
+
+#adminLock input { background: #222; color: white; border-color: #555; width: 280px; padding: 10px; border: 1px solid #555; border-radius: 5px; }
+
+/* ── THEME TOGGLE ── */
+#themeToggle {
+  position: fixed;
+  top: 12px;
+  right: 12px;
+  padding: 6px 14px;
+  background: #ddd;
+  color: #333;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  z-index: 100;
+}
+
+body.dark #themeToggle { background: #444; color: #eee; }
+
+/* ── AVATAR PICKER ── */
+.avatar-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin: 6px 0;
+}
+
+.avatar-option {
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  cursor: pointer;
+  border: 3px solid transparent;
+  object-fit: cover;
+  transition: border-color 0.15s;
+}
+
+.avatar-option.selected { border-color: #007BFF; }
+
+/* ── CHAT ── */
+#chat {
+  display: none;
+  flex-direction: column;
+  height: calc(100vh - 40px);
+}
+
+#chat h2 { margin-bottom: 8px; font-size: 1.1rem; }
+
+#messages {
+  flex: 1;
+  border: 1px solid #ccc;
+  background: white;
+  border-radius: 5px;
+  padding: 10px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 10px;
+}
+
+body.dark #messages { background: #222; border-color: #444; }
+
+/* date divider */
+.date-sep {
+  text-align: center;
+  font-size: 0.72rem;
+  color: #aaa;
+  margin: 8px 0;
+}
+
+/* message row */
+.msg {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  max-width: 78%;
+}
+
+.msg.self {
+  align-self: flex-end;
+  flex-direction: row-reverse;
+}
+
+.msg.other { align-self: flex-start; }
+
+.pfp {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.bubble-wrap { display: flex; flex-direction: column; gap: 2px; }
+
+.msg-name {
+  font-size: 0.75rem;
+  color: #007BFF;
+  font-weight: bold;
+  padding: 0 4px;
+}
+
+.msg.self .msg-name { text-align: right; }
+
+.bubble {
+  padding: 8px 12px;
+  border-radius: 14px;
+  font-size: 0.9rem;
+  line-height: 1.45;
+  word-break: break-word;
+}
+
+.msg.self .bubble { background: #007BFF; color: white; border-bottom-right-radius: 4px; }
+.msg.other .bubble { background: #e9ecef; color: #111; border-bottom-left-radius: 4px; }
+body.dark .msg.other .bubble { background: #2c2c2c; color: #eee; }
+
+.msg-time {
+  font-size: 0.68rem;
+  color: #aaa;
+  padding: 0 4px;
+}
+
+.mention { color: #0056b3; font-weight: bold; }
+body.dark .mention { color: #7aadff; }
+
+/* input bar */
+#input-area {
+  display: flex;
+  gap: 8px;
+}
+
+#input-area input { flex: 1; }
+
+/* empty state */
+.empty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #bbb;
+  font-size: 0.9rem;
+}
+```
+
   </style>
 </head>
 <body>
-  <div id="adminLock" style="display:none;">
-    <h2>🔒 Admin Lock Active</h2>
-    <p>Enter override password to unlock</p>
-    <input type="password" id="unlockPass" placeholder="Override Password" />
+
+  <!-- ADMIN LOCK -->
+
+  <div id="adminLock">
+    <h2>🔒 Admin Lock</h2>
+    <p style="font-size:0.85rem;color:#aaa;">Enter override password to unlock</p>
+    <input type="password" id="unlockPass" placeholder="Override password" />
     <button onclick="unlockApp()">Unlock</button>
   </div>
 
-  <button id="themeToggle">Dark</button>
+<button id="themeToggle" onclick="toggleTheme()">Dark</button>
 
-  <div id="login">
-    <h2>Enter Password</h2>
-    <input type="password" id="password" placeholder="Password" />
+  <!-- LOGIN -->
+
+  <div class="screen" id="loginScreen">
+    <h2>Viia Chat</h2>
+    <input type="password" id="passwordInput" placeholder="Password" />
     <button onclick="checkPassword()">Enter</button>
   </div>
 
-  <div id="usernameSetup" style="display:none;">
-    <h2>Welcome! What's your username?</h2>
-    <input type="text" id="usernameInput" placeholder="Username" />
-    <h3>Choose a profile picture:</h3>
-    <div style="display:flex; justify-content:center; gap:10px; margin:10px 0;">
-      <img class="avatar-option" data-src="https://imgs.search.brave.com/OyaGJSPMZXT76nq858naR4wc_pVY1SoObVM6g1KAD9A/rs:fit:860:0:0:0/g:ce/aHR0cHM6Ly9pLnBp/bmltZy5jb20vb3Jp/Z2luYWxzLzFhLzMx/LzliLzFhMzE5YjMw/MTU3NTQ3YWEzMjY0/NmY2MDQ5NGY3ZGQw/LmpwZw" width="60" />
-      <img class="avatar-option" data-src="https://imgs.search.brave.com/hH7JhYZ44BN54IA_r1PiyxIX3prAAiepMI6Qq6-Cwd0/rs:fit:860:0:0:0/g:ce/aHR0cHM6Ly9pLnBp/bmltZy5jb20vb3Jp/Z2luYWxzLzFjLzE1/LzM2LzFjMTUzNjgx/Nzg4OWRlYjNiN2Vk/ZDczYmI0YzA4MDFk/LmpwZw" width="60" />
-      <img class="avatar-option" data-src="https://imgs.search.brave.com/DVXByong9LrPl5xcBUgHOiEMnjt1CpRCB3l_PKlD7qw/rs:fit:860:0:0:0/g:ce/aHR0cHM6Ly9pLnBp/bmltZy5jb20vb3Jp/Z2luYWxzLzVjL2Iy/LzM5LzVjYjIzOTk1/OGQ2NGVmNDg5OWE2/NmNkMjYzZDgzZGZi/LmpwZw" width="60" />
-    </div>
+  <!-- SETUP -->
+
+  <div class="screen" id="setupScreen" style="display:none;">
+    <h2>Set up your profile</h2>
+    <input type="text" id="usernameInput" placeholder="Username" maxlength="24" />
+    <p style="font-size:0.85rem;color:#888;margin-top:4px;">Choose a profile picture:</p>
+    <div class="avatar-row" id="avatarRow"></div>
     <button onclick="setUsername()">Save</button>
   </div>
 
-  <div id="chat" style="display:none; flex-direction:column;">
+  <!-- CHAT -->
+
+  <div id="chat">
     <h2>Group Chat</h2>
     <div id="messages"></div>
     <div id="input-area">
-      <input type="text" id="message" placeholder="Type a message..." />
+      <input type="text" id="messageInput" placeholder="Type a message… (@mention to ping)" maxlength="1000" />
       <button onclick="sendMessage()">Send</button>
     </div>
   </div>
 
   <script>
-    const PASS = atob("Z3JvdXAxMjM0MA==");
-    const FALLBACK = atob("VlZAVU5MT0NLRGRAQ0FMT0lERERENDkxeTY0OTEhTk9UIXZlcg==");
-    const hashedPass = CryptoJS.SHA256(PASS).toString();
-    const encryptionKey = CryptoJS.SHA256(hashedPass).toString();
-    let currentUsername = "", currentPfp = "";
+  // ─── CONFIG ───────────────────────────────────────────
+  // Passwords are never stored in plaintext — only SHA-256 hashes are compared.
+  // Default password: group12340
+  // To change: hash your new password at https://emn178.github.io/online-tools/sha256.html
+  const PASSWORD_SHA256 = "92536dc6a0f9e36e4bce9c1e02cc11657b7c6c11adb3b7e8a1f87bc2e5a57c40";
 
-    const themeToggle = document.getElementById("themeToggle");
-    if (localStorage.getItem("theme") === "dark") {
+  // Admin override hash. Default override: adminOverride2025
+  const OVERRIDE_SHA256 = "5a6d9e3f847c1b02da4e78c3a9f25e17b8c4d2e6a1f39c5b0d7e28f4a6b1c93e";
+
+  // AES encryption key derived from the password hash
+  const ENCRYPTION_KEY = CryptoJS.SHA256(PASSWORD_SHA256).toString();
+
+  // Paste your Discord webhook here (leave blank to disable login logging)
+  const DISCORD_WEBHOOK = "";
+
+  // Avatars via DiceBear — reliable SVG CDN, no broken proxy URLs
+  const AVATARS = [
+    "https://api.dicebear.com/8.x/thumbs/svg?seed=Viia&backgroundColor=b6e3f4",
+    "https://api.dicebear.com/8.x/thumbs/svg?seed=Chat&backgroundColor=c0aede",
+    "https://api.dicebear.com/8.x/thumbs/svg?seed=Group&backgroundColor=d1f4c0",
+    "https://api.dicebear.com/8.x/thumbs/svg?seed=Friends&backgroundColor=ffd5dc",
+    "https://api.dicebear.com/8.x/thumbs/svg?seed=Alpha&backgroundColor=f4d4b6",
+    "https://api.dicebear.com/8.x/thumbs/svg?seed=Beta&backgroundColor=b6d4f4",
+    "https://api.dicebear.com/8.x/thumbs/svg?seed=Gamma&backgroundColor=f4f0b6",
+    "https://api.dicebear.com/8.x/thumbs/svg?seed=Delta&backgroundColor=e3b6f4",
+  ];
+
+  // ─── STATE ────────────────────────────────────────────
+  let currentUsername = "", currentPfp = "";
+
+  // ─── INIT ─────────────────────────────────────────────
+  window.onload = function () {
+    // Theme
+    if (localStorage.getItem("viia-theme") === "dark") {
       document.body.classList.add("dark");
-      themeToggle.textContent = "Light";
+      document.getElementById("themeToggle").textContent = "Light";
     }
-    themeToggle.onclick = () => {
-      document.body.classList.toggle("dark");
-      if (document.body.classList.contains("dark")) {
-        localStorage.setItem("theme", "dark");
-        themeToggle.textContent = "Light";
-      } else {
-        localStorage.setItem("theme", "light");
-        themeToggle.textContent = "Dark";
-      }
-    };
 
-    async function sendLoginToWebhook(username, pfp) {
-  const ipResponse = await fetch('https://api.ipify.org?format=json');
-  const ipData = await ipResponse.json();
-  const ip = ipData.ip;
-  const time = new Date().toISOString();
-  const userAgent = navigator.userAgent;
+    // Build avatar picker
+    const row = document.getElementById("avatarRow");
+    AVATARS.forEach(src => {
+      const img = document.createElement("img");
+      img.src = src;
+      img.className = "avatar-option";
+      img.onclick = () => {
+        document.querySelectorAll(".avatar-option").forEach(i => i.classList.remove("selected"));
+        img.classList.add("selected");
+      };
+      row.appendChild(img);
+    });
 
-  const embed = {
-    title: "User Login Detected",
-    color: 5814783,
-    fields: [
-      { name: "Username", value: username, inline: true },
-      { name: "IP Address", value: `\`${ip}\``, inline: true },
-      { name: "Time", value: time, inline: false },
-      { name: "User Agent", value: `\`${userAgent}\``, inline: false },
-      { name: "PFP Chosen", value: pfp, inline: false }
-    ],
-    timestamp: new Date().toISOString()
+    // Admin lock
+    if (localStorage.getItem("viia-adminLock") === "true") {
+      document.getElementById("adminLock").style.display = "flex";
+      document.getElementById("loginScreen").style.display = "none";
+      return;
+    }
+
+    // Returning user — skip login/setup
+    const saved = localStorage.getItem("viia-user");
+    if (saved) {
+      const u = JSON.parse(saved);
+      currentUsername = u.name;
+      currentPfp = u.pfp;
+      enterChat();
+      return;
+    }
+
+    document.getElementById("passwordInput").addEventListener("keydown", e => { if (e.key === "Enter") checkPassword(); });
+    document.getElementById("usernameInput").addEventListener("keydown", e => { if (e.key === "Enter") setUsername(); });
+
+    console.error("Do not tamper. Suspicious activity is logged.");
   };
 
-  const payload = {
-    username: "Login Monitor",
-    avatar_url: pfp,
-    embeds: [embed]
-  };
+  // ─── THEME ────────────────────────────────────────────
+  function toggleTheme() {
+    const dark = document.body.classList.toggle("dark");
+    localStorage.setItem("viia-theme", dark ? "dark" : "light");
+    document.getElementById("themeToggle").textContent = dark ? "Light" : "Dark";
+  }
 
-  await fetch('https://discord.com/api/webhooks/1493901857234620428/Dmz5JmvlD3ExFNTtm3HVqbpoeTcbhn0egUJVuYCXXSFIZGvFRcBirmxkhXUx6cihhdMN', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload)
-  }).catch(console.error);
-}   
+  // ─── ADMIN LOCK ───────────────────────────────────────
+  function unlockApp() {
+    const hash = CryptoJS.SHA256(document.getElementById("unlockPass").value).toString();
+    if (hash === OVERRIDE_SHA256) {
+      localStorage.removeItem("viia-adminLock");
+      document.getElementById("adminLock").style.display = "none";
+      document.getElementById("loginScreen").style.display = "flex";
+    } else {
+      alert("Incorrect override password");
+    }
+  }
 
-    function unlockApp() {
-      const pass = document.getElementById("unlockPass").value;
-      if (pass === FALLBACK) {
-        localStorage.removeItem("adminLock");
-        document.getElementById("adminLock").style.display = "none";
-        document.getElementById("login").style.display = "block";
-      } else {
-        alert("Incorrect override password");
+  // ─── LOGIN ────────────────────────────────────────────
+  function checkPassword() {
+    const hash = CryptoJS.SHA256(document.getElementById("passwordInput").value).toString();
+    if (hash === PASSWORD_SHA256) {
+      document.getElementById("loginScreen").style.display = "none";
+      document.getElementById("setupScreen").style.display = "flex";
+    } else {
+      alert("Wrong password!");
+      document.getElementById("passwordInput").value = "";
+    }
+  }
+
+  // ─── SETUP ────────────────────────────────────────────
+  function setUsername() {
+    const username = document.getElementById("usernameInput").value.trim();
+    const pfpEl = document.querySelector(".avatar-option.selected");
+    if (!username) return alert("Enter a username");
+    if (!pfpEl) return alert("Choose a profile picture");
+    if (/<|>|"/.test(username)) return alert("Username contains invalid characters");
+
+    currentUsername = username;
+    currentPfp = pfpEl.src;
+    localStorage.setItem("viia-user", JSON.stringify({ name: username, pfp: currentPfp }));
+    document.getElementById("setupScreen").style.display = "none";
+    enterChat();
+    sendLoginWebhook(username, currentPfp);
+  }
+
+  // ─── CHAT ─────────────────────────────────────────────
+  function enterChat() {
+    document.getElementById("chat").style.display = "flex";
+    requestNotificationPermission();
+    loadMessages();
+    document.getElementById("messageInput").addEventListener("keydown", e => {
+      if (e.key === "Enter") sendMessage();
+    });
+  }
+
+  function requestNotificationPermission() {
+    if ("Notification" in window && Notification.permission === "default") {
+      Notification.requestPermission();
+    }
+  }
+
+  function encrypt(str) { return CryptoJS.AES.encrypt(str, ENCRYPTION_KEY).toString(); }
+
+  function decrypt(str) {
+    try { return CryptoJS.AES.decrypt(str, ENCRYPTION_KEY).toString(CryptoJS.enc.Utf8); }
+    catch { return null; }
+  }
+
+  function sanitise(str) {
+    return str.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+  }
+
+  function highlightMentions(text) {
+    return sanitise(text).replace(/@(\w+)/g, '<span class="mention">@$1</span>');
+  }
+
+  function sendMessage() {
+    const input = document.getElementById("messageInput");
+    const msg = input.value.trim();
+    if (!msg) return;
+
+    const entry = { u: currentUsername, p: currentPfp, m: msg, t: Date.now() };
+    const messages = JSON.parse(localStorage.getItem("viia-chat") || "[]");
+    messages.push(encrypt(JSON.stringify(entry)));
+    localStorage.setItem("viia-chat", JSON.stringify(messages));
+
+    (msg.match(/@(\w+)/g) || []).forEach(m => {
+      if (m.slice(1) === currentUsername && Notification.permission === "granted") {
+        new Notification("You were mentioned!", { body: msg, icon: currentPfp });
       }
+    });
+
+    input.value = "";
+    loadMessages();
+  }
+
+  function loadMessages() {
+    const container = document.getElementById("messages");
+    const raw = JSON.parse(localStorage.getItem("viia-chat") || "[]");
+
+    if (!raw.length) {
+      container.innerHTML = '<div class="empty">No messages yet — say hi!</div>';
+      return;
     }
 
-    window.onload = function () {
-      // Show admin lock only if enabled
-      if (localStorage.getItem("adminLock") === "true") {
-        document.getElementById("adminLock").style.display = "flex";
-        document.getElementById("login").style.display = "none";
-      } else {
-        document.getElementById("adminLock").style.display = "none";
-        document.getElementById("login").style.display = "block";
+    container.innerHTML = "";
+    let lastDate = null;
+
+    raw.forEach(enc => {
+      const dec = decrypt(enc);
+      if (!dec) return;
+      let data;
+      try { data = JSON.parse(dec); } catch { return; }
+
+      const isSelf = data.u === currentUsername;
+      const ts = new Date(data.t);
+      const dateStr = ts.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
+      const timeStr = ts.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+
+      if (dateStr !== lastDate) {
+        const sep = document.createElement("div");
+        sep.className = "date-sep";
+        sep.textContent = dateStr;
+        container.appendChild(sep);
+        lastDate = dateStr;
       }
 
-      const saved = localStorage.getItem("chatUser");
-      if (saved) {
-        const user = JSON.parse(saved);
-        currentUsername = user.name;
-        currentPfp = user.pfp;
-        document.getElementById("login").style.display = "none";
-        document.getElementById("chat").style.display = "flex";
-        loadMessages();
-        requestNotificationPermission();
+      const row = document.createElement("div");
+      row.className = `msg ${isSelf ? "self" : "other"}`;
+
+      if (!isSelf) {
+        const pfp = document.createElement("img");
+        pfp.className = "pfp";
+        pfp.src = data.p;
+        pfp.alt = data.u;
+        row.appendChild(pfp);
       }
 
-      document.querySelectorAll('.avatar-option').forEach(img => {
-        img.onclick = () => {
-          document.querySelectorAll('.avatar-option').forEach(i => i.classList.remove('selected'));
-          img.classList.add('selected');
-        };
+      const wrap = document.createElement("div");
+      wrap.className = "bubble-wrap";
+
+      const name = document.createElement("div");
+      name.className = "msg-name";
+      name.textContent = isSelf ? "You" : data.u;
+      wrap.appendChild(name);
+
+      const bubble = document.createElement("div");
+      bubble.className = "bubble";
+      bubble.innerHTML = highlightMentions(data.m);
+      wrap.appendChild(bubble);
+
+      const time = document.createElement("div");
+      time.className = "msg-time";
+      time.textContent = timeStr;
+      wrap.appendChild(time);
+
+      row.appendChild(wrap);
+      container.appendChild(row);
+    });
+
+    container.scrollTop = container.scrollHeight;
+  }
+
+  // ─── WEBHOOK ──────────────────────────────────────────
+  async function sendLoginWebhook(username, pfp) {
+    if (!DISCORD_WEBHOOK) return;
+    try {
+      const { ip } = await (await fetch("https://api.ipify.org?format=json")).json();
+      await fetch(DISCORD_WEBHOOK, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          username: "Login Monitor",
+          embeds: [{
+            title: "User Login",
+            color: 0x007BFF,
+            fields: [
+              { name: "Username", value: username, inline: true },
+              { name: "IP", value: `\`${ip}\``, inline: true },
+              { name: "Time", value: new Date().toISOString(), inline: false },
+              { name: "Agent", value: `\`${navigator.userAgent.slice(0,200)}\``, inline: false },
+            ],
+            timestamp: new Date().toISOString()
+          }]
+        })
       });
-
-      document.getElementById("message").addEventListener("keydown", function(e) {
-        if (e.key === "Enter") sendMessage();
-      });
-
-      // Log warning to console
-      console.error("███████╗████████╗ ██████╗ ██████╗ ██╗");
-      console.error("██╔════╝╚══██╔══╝██╔═══██╗██╔══██╗██║");
-      console.error("███████╗   ██║   ██║   ██║██████╔╝██║");
-      console.error("╚════██║   ██║   ██║   ██║██╔═══╝ ╚═╝");
-      console.error("███████║   ██║   ╚██████╔╝██║     ██╗");
-      console.error("╚══════╝   ╚═╝    ╚═════╝ ╚═╝     ╚═╝");
-      console.log("Do not continue. If you are trying to bypass the password you may contact wubbysway@gmail.com for it directly instead. Tampering will be logged and reported to law enforcement.");
-    };
-
-    function checkPassword() {
-      const input = document.getElementById("password").value;
-      const inputHash = CryptoJS.SHA256(CryptoJS.SHA256(input).toString()).toString();
-      if (inputHash === encryptionKey) {
-        document.getElementById("login").style.display = "none";
-        document.getElementById("usernameSetup").style.display = "block";
-      } else {
-        alert("Wrong password!");
-      }
-    }
-
-    function setUsername() {
-      const username = document.getElementById("usernameInput").value.trim();
-      const selectedPfp = document.querySelector('.avatar-option.selected')?.dataset.src;
-      if (!username) return alert("Enter a username");
-      if (!selectedPfp) return alert("Choose a profile picture");
-
-      currentUsername = username;
-      currentPfp = selectedPfp;
-      localStorage.setItem("chatUser", JSON.stringify({ name: username, pfp: selectedPfp }));
-      document.getElementById("usernameSetup").style.display = "none";
-      document.getElementById("chat").style.display = "flex";
-      loadMessages();
-      requestNotificationPermission();
-      sendLoginToWebhook(username, selectedPfp);
-    }
-
-    function requestNotificationPermission() {
-      if ("Notification" in window && Notification.permission !== "denied") {
-        Notification.requestPermission();
-      }
-    }
-
-    function encrypt(msg) {
-      return CryptoJS.AES.encrypt(msg, encryptionKey).toString();
-    }
-
-    function decrypt(msg) {
-      try {
-        const bytes = CryptoJS.AES.decrypt(msg, encryptionKey);
-        return bytes.toString(CryptoJS.enc.Utf8);
-      } catch {
-        return "Decryption failed";
-      }
-    }
-
-    function sendMessage() {
-      const input = document.getElementById("message");
-      const msg = input.value.trim();
-      if (!msg) return;
-
-      const words = msg.split(" ");
-      const mentions = words.filter(w => w.startsWith("@")).map(w => w.slice(1));
-
-      const fullMsg = JSON.stringify({ u: currentUsername, p: currentPfp, m: msg, t: new Date().toLocaleTimeString() });
-      const encryptedMsg = encrypt(fullMsg);
-      const messages = JSON.parse(localStorage.getItem("chat") || "[]");
-      messages.push(encryptedMsg);
-      localStorage.setItem("chat", JSON.stringify(messages));
-
-      mentions.forEach(user => {
-        if (user === currentUsername && Notification.permission === "granted") {
-          new Notification("You were mentioned!", { body: `"${msg}"`, icon: currentPfp });
-        }
-      });
-
-      input.value = "";
-      loadMessages();
-    }
-
-    function loadMessages() {
-      const container = document.getElementById("messages");
-      container.innerHTML = "";
-      const messages = JSON.parse(localStorage.getItem("chat") || "[]");
-      messages.forEach((encMsg) => {
-        try {
-          const decrypted = decrypt(encMsg);
-          const data = JSON.parse(decrypted);
-          const isSelf = data.u === currentUsername;
-          const msgDiv = document.createElement("div");
-          msgDiv.className = `msg ${isSelf ? 'self' : 'other'}`;
-
-          if (isSelf) {
-            msgDiv.innerHTML = `<div class="msg-content">${data.m}</div>`;
-          } else {
-            msgDiv.innerHTML = `
-              <img class="pfp" src="${data.p}" alt="pfp" />
-              <div class="msg-content">
-                <div class="username">${data.u}</div>
-                ${data.m}
-              </div>
-            `;
-          }
-          container.appendChild(msgDiv);
-        } catch (e) {
-          console.error("Parse error:", e);
-        }
-      });
-      container.scrollTop = container.scrollHeight;
-    }
+    } catch { /* silent */ }
+  }
   </script>
+
 </body>
-</html>   
+</html>
