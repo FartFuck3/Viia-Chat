@@ -21,13 +21,6 @@
     .msg-content { padding: 8px; border-radius: 5px; }
     .username { font-weight: bold; margin-bottom: 3px; font-size: 0.9em; color: #007BFF; }
     #input-area { display: flex; gap: 5px; }
-    <button id="lockSiteBtn" style="background:#d9534f;margin-top:10px;">Lock Site</button>
-    document.getElementById("lockSiteBtn").onclick = function() {
-    if (confirm("Lock this site? Only override password can unlock.")) {
-      localStorage.setItem("adminLock", "true");
-      alert("Site locked. Reload to apply.");
-      }
-    };
     input[type="text"] { flex: 1; padding: 10px; border: 1px solid #ccc; border-radius: 5px; }
     body.dark input[type="text"] { background: #333; color: #eee; border-color: #555; }
     button { padding: 10px; background: #007BFF; color: white; border: none; border-radius: 5px; cursor: pointer; }
