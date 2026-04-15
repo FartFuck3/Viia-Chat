@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Secure Chat</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; background: #f4f6f9; }
+    #login, #usernameSetup { text-align: center; margin-top: 100px; }
+    #chat { display: none; flex-direction: column; height: 80vh; }
+    #messages { flex: 1; border: 1px solid #ccc; padding: 10px; overflow-y: auto; background: white; margin-bottom: 10px; border-radius: 5px; }
+    .msg { display: flex; gap: 10px; margin: 8px 0; align-items: flex-start; }
+    .pfp { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; }
+    .msg-content { background: #e9ecef; padding: 8px; border-radius: 5px; max-width: 70%; }
+    .username { font-weight: bold; margin-bottom: 3px; font-size: 0.9em; color: #007BFF; }
+    #input-area { display: flex; gap: 5px; }
+    input, button { padding: 10px; }
+    input[type="text"] { flex: 1; border: 1px solid #ccc; border-radius: 5px; }
+    button { background: #007BFF; color: white; border: none; border-radius: 5px; cursor: pointer; }
+    button:hover { background: #0056b3; }
+    .avatar-option { cursor: pointer; border: 3px solid transparent; }
+    .avatar-option.selected { border-color: #007BFF; }
+  </style>
+</head>
+<body>
+  <div id="login">
+    <h2>Enter Password</h2>
+    <input type="password" id="password" placeholder="Password" />
+    <button onclick="checkPassword()">Enter</button>
+  </div>
+
+  <div id="usernameSetup" style="display:none; text-align:center; margin-top:100px;">
+    <h2>Welcome! What's your username?</h2>
+    <input type="text" id="usernameInput" placeholder="Username" />
+    <h3>Choose a profile picture:</h3>
+    <div style="display:flex; justify-content:center; gap:10px; margin:10px 0;">
+      <img class="avatar-option" data-src="https://imgs.search.brave.com/OyaGJSPMZXT76nq858naR4wc_pVY1SoObVM6g1KAD9A/rs:fit:860:0:0:0/g:ce/aHR0cHM6Ly9pLnBp/bmltZy5jb20vb3Jp/Z2luYWxzLzFhLzMx/LzliLzFhMzE5YjMw/MTU3NTQ3YWEzMjY0/NmY2MDQ5NGY3ZGQw/LmpwZw" src="https://imgs.search.brave.com/OyaGJSPMZXT76nq858naR4wc_pVY1SoObVM6g1KAD9A/rs:fit:860:0:0:0/g:ce/aHR0cHM6Ly9pLnBp/bmltZy5jb20vb3Jp/Z2luYWxzLzFhLzMx/LzliLzFhMzE5YjMw/MTU3NTQ3YWEzMjY0/NmY2MDQ5NGY3ZGQw/LmpwZw" width="60" />
+      <img class="avatar-option" data-src="https://imgs.search.brave.com/hH7JhYZ44BN54IA_r1PiyxIX3prAAiepMI6Qq6-Cwd0/rs:fit:860:0:0:0/g:ce/aHR0cHM6Ly9pLnBp/bmltZy5jb20vb3Jp/Z2luYWxzLzFjLzE1/LzM2LzFjMTUzNjgx/Nzg4OWRlYjNiN2Vk/ZDczYmI0YzA4MDFk/LmpwZw" src="https://imgs.search.brave.com/hH7JhYZ44BN54IA_r1PiyxIX3prAAiepMI6Qq6-Cwd0/rs:fit:860:0:0:0/g:ce/aHR0cHM6Ly9pLnBp/bmltZy5jb20vb3Jp/Z2luYWxzLzFjLzE1/LzM2LzFjMTUzNjgx/Nzg4OWRlYjNiN2Vk/ZDczYmI0YzA4MDFk/LmpwZw" width="60" />
+      <img class="avatar-option" data-src="https://imgs.search.brave.com/DVXByong9LrPl5xcBUgHOiEMnjt1CpRCB3l_PKlD7qw/rs:fit:860:0:0:0/g:ce/aHR0cHM6Ly9pLnBp/bmltZy5jb20vb3Jp/Z2luYWxzLzVjL2Iy/LzM5LzVjYjIzOTk1/OGQ2NGVmNDg5OWE2/NmNkMjYzZDgzZGZi/LmpwZw" src="https://imgs.search.brave.com/DVXByong9LrPl5xcBUgHOiEMnjt1CpRCB3l_PKlD7qw/rs:fit:860:0:0:0/g:ce/aHR0cHM6Ly9pLnBp/bmltZy5jb20vb3Jp/Z2luYWxzLzVjL2Iy/LzM5LzVjYjIzOTk1/OGQ2NGVmNDg5OWE2/NmNkMjYzZDgzZGZi/LmpwZw" width="60" />
+    </div>
+    <button onclick="setUsername()">Save</button>
+  </div>
+
+  <div id="chat" style="display:none; flex-direction:column;">
+    <h2>Group Chat</h2>
+    <div id="messages"></div>
+    <div id="input-area">
+      <input type="text" id="message" placeholder="Type a message..." />
+      <button onclick="sendMessage()">Send</button>
+    </div>
+  </div>
+
+  <script>
+    const PASS = "group12340";
+    const hashedPass = CryptoJS.SHA256(PASS).toString();
+    const encryptionKey = CryptoJS.SHA256(hashedPass).toString();
+    let currentUsername = "", currentPfp = "";
+
+    // On load
+    window.onload = function () {
+      const saved = localStorage.getItem("chatUser");
+      if (saved) {
+        const user = JSON.parse(saved);
+        currentUsername = user.name;
+        currentPfp = user.pfp;
+        document.getElementById("login").style.display = "none";
+        document.getElementById("chat").style.display = "flex";
+        loadMessages();
+        requestNotificationPermission();
+      } else {
+        document.getElementById("login").style.display = "block";
+      }
+
+      // Avatar selection
+      document.querySelectorAll('.avatar-option').forEach(img => {
+        img.onclick = () => {
+          document.querySelectorAll('.avatar-option').forEach(i => i.classList.remove('selected'));
+          img.classList.add('selected');
+        };
+      });
+    };
+
+    function checkPassword() {
+      const input = document.getElementById("password").value;
+      const inputHash = CryptoJS.SHA256(CryptoJS.SHA256(input).toString()).toString();
+      if (inputHash === encryptionKey) {
+        document.getElementById("login").style.display = "none";
+        document.getElementById("usernameSetup").style.display = "block";
+      } else {
+        alert("Wrong password!");
+      }
+    }
+
+    function setUsername() {
+      const username = document.getElementById("usernameInput").value.trim();
+      const selectedPfp = document.querySelector('.avatar-option.selected')?.dataset.src;
+      if (!username) return alert("Enter a username");
+      if (!selectedPfp) return alert("Choose a profile picture");
+
+      currentUsername = username;
+      currentPfp = selectedPfp;
+      localStorage.setItem("chatUser", JSON.stringify({ name: username, pfp: selectedPfp }));
+      document.getElementById("usernameSetup").style.display = "none";
+      document.getElementById("chat").style.display = "flex";
+      loadMessages();
+      requestNotificationPermission();
+    }
+
+    function requestNotificationPermission() {
+      if ("Notification" in window && Notification.permission !== "denied") {
+        Notification.requestPermission();
+      }
+    }
+
+    function encrypt(msg) {
+      return CryptoJS.AES.encrypt(msg, encryptionKey).toString();
+    }
+
+    function decrypt(msg) {
+      try {
+        const bytes = CryptoJS.AES.decrypt(msg, encryptionKey);
+        return bytes.toString(CryptoJS.enc.Utf8);
+      } catch {
+        return "Decryption failed";
+      }
+    }
+
+    function sendMessage() {
+      const input = document.getElementById("message");
+      const msg = input.value.trim();
+      if (!msg) return;
+
+      // Check for @mentions
+      const words = msg.split(" ");
+      const mentions = words.filter(w => w.startsWith("@")).map(w => w.slice(1));
+
+      const fullMsg = JSON.stringify({ u: currentUsername, p: currentPfp, m: msg, t: new Date().toLocaleTimeString() });
+      const encryptedMsg = encrypt(fullMsg);
+      const messages = JSON.parse(localStorage.getItem("chat") || "[]");
+      messages.push(encryptedMsg);
+      localStorage.setItem("chat", JSON.stringify(messages));
+
+      // Send notification
+      mentions.forEach(user => {
+        if (user === currentUsername && Notification.permission === "granted") {
+          new Notification("You were mentioned!", {
+            body: `"${msg}" - ${currentUsername}`,
+            icon: currentPfp
+          });
+        }
+      });
+
+      input.value = "";
+      loadMessages();
+    }
+
+    function loadMessages() {
+      const container = document.getElementById("messages");
+      container.innerHTML = "";
+      const messages = JSON.parse(localStorage.getItem("chat") || "[]");
+      messages.forEach((encMsg) => {
+        try {
+          const decrypted = decrypt(encMsg);
+          const data = JSON.parse(decrypted);
+          const div = document.createElement("div");
+          div.className = "msg";
+          div.innerHTML = `
+            <img class="pfp" src="${data.p}" alt="pfp" />
+            <div class="msg-content">
+              <div class="username">${data.u}</div>
+              <div>${data.m}</div>
+            </div>
+          `;
+          container.appendChild(div);
+        } catch (e) {
+          console.error("Failed to parse message:", e);
+        }
+      });
+      container.scrollTop = container.scrollHeight;
+    }
+  </script>
+</body>
+</html>   
